@@ -1,4 +1,4 @@
-# Auto-Dev v9
+# Auto-Dev v10
 
 Claude Code 全自动开发流水线技能 -- 输入需求，自动完成开发并推送到 GitHub。
 
@@ -173,6 +173,7 @@ mkdir -p .claude/commands && curl -o .claude/commands/auto-dev.md \
 | v7 | 轻量验证 + 审计模式 + 渐进交付 + 会话内学习 + 认证/状态感知 + 语言特定检查 + 类型传播 |
 | v8 | CI反馈闭环 + 降级机制 + 前端三态/a11y + API格式一致 + 跨会话持久 + prompt瘦身(-10%) |
 | v9 | Golden path示例 + 自动PR + 响应式/暗色模式 + CHANGELOG + 范围协商 + 中止机制 + 分层检查 + 快速启动 |
+| v10 | **减法重构**: 354→250行(-29%)。删除Claude已知的冗余规则，用"跟随项目一切模式"一句话替代14条明细。新增快速模式示例。信噪比最大化 |
 
 ## License
 
