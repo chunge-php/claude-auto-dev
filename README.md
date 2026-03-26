@@ -1,4 +1,4 @@
-# Auto-Dev v11
+# Auto-Dev v12
 
 Claude Code 全自动开发流水线技能 -- 输入需求，自动完成开发并推送到 GitHub。
 
@@ -175,6 +175,7 @@ mkdir -p .claude/commands && curl -o .claude/commands/auto-dev.md \
 | v9 | Golden path示例 + 自动PR + 响应式/暗色模式 + CHANGELOG + 范围协商 + 中止机制 + 分层检查 + 快速启动 |
 | v10 | **减法重构**: 354→250行(-29%)。删除Claude已知的冗余规则，用"跟随项目一切模式"一句话替代14条明细。新增快速模式示例。信噪比最大化 |
 | v11 | 执行质量: 快速模式先想后做、规划校验、commit纪律(<300行+写WHY)、推送前diff检查、错误恢复示例、脚手架创建远程仓库 |
+| v12 | Sub-agent提示词模板(architect/explorer/reviewer) + Python示例 + Monorepo范围决策 + 分支命名检测 + context保护 + 快速模式早停标记 |
 
 ## License
 
