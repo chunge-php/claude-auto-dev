@@ -1,8 +1,13 @@
-# Auto-Dev v8
+# Auto-Dev v9
 
 $ARGUMENTS
 
-## 铁律（违反任何一条都是失败）
+<!-- 快速参考：整个流程的压缩版，Claude 每个阶段可回看 -->
+<!-- 铁律: 先读后写 | 先查后建 | 不破坏现有 | 跟随项目 | 不问不启 | 只推origin -->
+<!-- 循环: 读→查→写→检→格→存 -->
+<!-- 模式: 快速(直接干) | 标准(规划→理解→开发→验证→审查→推送→CI) | 大型(+分支+PR+切片) -->
+
+## 铁律
 
 1. **先读后写** — 改文件前必须 Read
 2. **先查后建** — 新代码前 Grep 已有实现
@@ -16,13 +21,15 @@ $ARGUMENTS
 | 场景 | 决策 |
 |------|------|
 | 模糊需求 | 选最常见理解，commit 记录假设 |
-| 多种方案 | 选最简（少文件、少依赖） |
+| 多种方案 | 选最简 |
 | 不确定安全性 | 不改，跳过汇报 |
 | 范围膨胀 | 只做明确要求的 |
 | 约定 vs 最佳实践 | 跟随约定 |
 | 同类错误 ≥3 | 停，分析根因 |
-| context 紧张 | 降级到快速模式，砍掉可选步骤 |
-| CI 失败 | 最多修2轮，仍失败汇报 |
+| context 紧张 | 降级到快速模式 |
+| CI 失败 | 最多修2轮 |
+| **需求过大**(>10文件且模糊) | 先拆解输出范围清单，标注本次做哪些，其余记入建议 |
+| **发现不可行** | 立即中止，汇报原因 + 已完成部分 + 建议替代方案 |
 
 ---
 
@@ -50,32 +57,34 @@ $ARGUMENTS
 | 意图 | 判断 | 差异 |
 |------|------|------|
 | **fix** | 修复/bug/报错 | 最小改动 + 回归测试 |
-| **feat** | 添加/新增/实现 | 完整实现 + 测试 + 文档 + 三态UI |
+| **feat** | 添加/新增/实现 | 完整实现 + 测试 + 文档 + 三态 + 响应式 |
 | **refactor** | 重构/整理 | 锁行为再改 + 清死代码 |
 | **perf** | 性能/慢/卡 | 定位瓶颈，针对性优化 |
 | **chore** | 升级/配置/迁移 | 最小风险 |
 
-### 环境感知（并行 Glob/Read）
+### 环境感知
 
-一次性检测所有：
+**快速模式精简版**（<3秒）：
+- 只检测：技术栈 + 包管理器 + CLAUDE.md
+- 其他在需要时按需检测
+
+**标准/大型完整版**：
 ```
 技术栈 | 包管理器 | 项目类型 | Monorepo | 代码风格 | 数据库
 测试框架 | i18n | Git Hooks | 状态管理 | 认证方案 | API响应格式
+响应式方案(tailwind/media queries) | 暗色模式(dark:/prefers-color-scheme)
 ```
 
-**API 响应格式检测**（新增）：
-- 读一个已有的 API handler/controller，提取返回格式（如 `{code, data, message}` 或 `{success, data, error}`）
-- 后续新 API 严格遵循此格式
+API 响应格式：读一个已有 handler 提取格式，新 API 严格遵循。
 
-### 学习项目约定
+### 学习项目约定（标准/大型）
 
 CLAUDE.md + 项目记忆 + 快速扫描：
 - `git log --oneline -10` → commit 风格
 - 2-3核心文件 → 命名/分层/模式
 - 目录结构 → 文件放置规则
-- auth middleware/guard → 认证模式
-- store 文件 → 状态管理模式
-- 无 src/ 且 git log 空 → 脚手架模式
+- auth/store → 认证和状态管理模式
+- 无 src/ 且 git log 空 → 脚手架
 
 ### 幂等检查
 
@@ -86,31 +95,27 @@ Grep 需求关键词：完全实现→终止，部分→只做剩余
 | 模式 | 条件 | 流程 |
 |------|------|------|
 | **脚手架** | 新项目 | 初始化 → 开发 → 验证 → 推送 |
-| **快速** | <5文件/fix/chore | 开发 → 验证 → 推送 |
+| **快速** | <5文件/fix/chore | **直接开发** → 验证 → 推送 |
 | **标准** | 5-20文件/feat/refactor | 规划 → 理解 → 开发 → 验证 → 审查 → 推送 → CI |
-| **大型** | >20文件/跨模块 | 同标准 + feature分支 + 备份tag + 切片交付 + 进度存档 |
+| **大型** | >20文件/跨模块 | 同标准 + feature分支 + 备份tag + 切片交付 + PR + 进度存档 |
 
 ### 安全网
 - 标准/大型：记录起始 commit hash
 - 大型：`git tag auto-dev-backup-$(date +%s)` + feature 分支
 - 未提交改动 → stash
 - 有未完成 auto-dev Task → 断点续传
-- **大型模式进度存档**：每完成一个切片，将进度写入 `.auto-dev-progress.json`（gitignore），conversation 中断后可恢复
+- 大型进度存档：`.auto-dev-progress.json`（gitignore）
 
-### 降级机制（新增）
+### 降级与中止
 
-当出现以下信号时，自动从当前模式降级：
-- 连续5个工具调用失败 → 降级到快速模式
-- 感知到 context 紧张（任务列表 >15 个未完成）→ 剩余任务分批，当前批只做最高优先级5个
-- 验证阶段发现 >20 个错误 → 只修 severity:error，忽略 warning
+**降级**：连续5次工具失败→快速模式；任务>15→只做前5个；验证>20错误→只修error
+**中止**：技术上不可行 / 需要用户提供信息(API key等) / 代码库状态异常 → 停止，汇报原因+建议
 
 ---
 
 ## 脚手架（仅新项目）
 
-1. 技术栈选择（优先用户指定）→ 官方脚手架初始化
-2. 基础依赖 + CLAUDE.md + .env.example
-3. commit: `init: 项目初始化` → 进入开发
+官方脚手架初始化 → 基础依赖 → CLAUDE.md + .env.example → `init: 项目初始化`
 
 ---
 
@@ -120,107 +125,89 @@ Agent(subagent_type="feature-dev:code-architect")：
 - 输入：技术栈 + 需求 + CLAUDE.md + 目录结构 + 认证 + 状态管理 + API格式
 - 输出：文件清单 + 依赖顺序 + 数据模型
 
-### 全栈分层
-
+**全栈分层**：
 ```
-DB Schema → Model/Service → API(+认证) → 状态层(store/hooks) → UI组件 → 页面(+路由守卫)
+DB Schema → Model/Service → API(+认证) → 状态层 → UI组件 → 页面(+守卫)
 ```
 每层单独 commit。
 
-### 大型：切片交付
+**大型切片交付**：按功能切片，每片含完整前后端，完成即 push。
 
-按功能切片，每片含完整前后端，完成即 push。
-
-TaskCreate 建任务。**不commit。**
+TaskCreate。**不commit。**
 
 ## 阶段2: 理解（标准/大型，已有项目）
 
-Agent(subagent_type="feature-dev:code-explorer")：
-- 执行路径、数据流、import 关系
-- 认证链路 + 类型依赖图
-- 结果喂给开发。不commit。
+Agent(subagent_type="feature-dev:code-explorer")：执行路径 + 数据流 + 认证链路 + 类型依赖图。结果喂给开发。
 
 ## 阶段3: 开发
 
 ### 会话内学习
 
-记住本次遇到的错误/模式/问题类型，后续自动避免。同类错误≥3次→停下分析根因。
+记住本次错误/模式/问题，后续避免。同类≥3→根因分析。
 
-### 开发循环
+### 开发循环：读→查→写→检→格→存
 
-```
-读 → 查 → 写 → 检 → 格 → 存
-```
-
-**读**: Read 目标文件（大文件 Grep 定位后读局部）
+**读**: Read 目标文件
 **查**: Grep 可复用代码
-**写**: 实现功能，遵循以下约束：
+**写**: 实现功能
 
+约束清单：
 - 文件放置跟随项目结构
-- DB迁移只加法（不drop/rename）
+- DB迁移只加法
 - 环境变量 → 默认值 + .env.example
-- i18n 项目 → locale 文件，不硬编码
-- 新路由/API 默认加认证（公开接口除外）
-- 新状态跟随项目状态管理方案
-- 新 API 严格遵循检测到的响应格式
-- 新依赖前检查已有替代，优先标准库
-- **性能**: 避免 N+1；新表加索引；列表必分页；大列表虚拟滚动
-- **前端三态**（feat 意图新增页面时必须）：
-  - **Loading 态**: 数据加载中显示 skeleton/spinner
-  - **Error 态**: 请求失败显示错误提示 + 重试按钮
-  - **Empty 态**: 数据为空显示引导信息
-  - 跟随项目已有的三态实现方式（如有）
-- **前端可访问性**（a11y 基础）：
-  - 可交互元素有 aria-label 或可见文本
-  - 图片有 alt
-  - 表单有 label
-  - 颜色对比度足够（不用纯灰色文字）
-- 遵循语言惯用写法（Claude 已知，不列明细）
+- i18n → locale 文件
+- 新路由/API 默认加认证
+- 新状态跟随项目方案
+- 新 API 遵循响应格式
+- 新依赖前检查替代
+- 性能: N+1/索引/分页/虚拟滚动
+- **前端三态**（feat+新页面）：Loading(skeleton) / Error(重试) / Empty(引导)
+- **响应式**（feat+前端）：
+  - 项目用 Tailwind → 用 responsive 前缀 (sm:/md:/lg:)
+  - 项目用 CSS → 用 media queries
+  - 移动端优先，逐步增强
+- **暗色模式**（如果项目已有 dark mode 支持）：
+  - Tailwind → 用 dark: 前缀
+  - CSS → 用 prefers-color-scheme
+  - 无暗色模式的项目不强加
+- **a11y 基础**：aria-label / alt / label / 对比度
+- 遵循语言惯用写法
 
-**检**:
-- 改导出 → Grep 消费者兼容性
-- 改 schema → 检查查询代码
-- 改 type/interface → 沿依赖图同步更新
-- refactor → 删除死代码
-
-**格**:
-- 有 husky/lint-staged → 跳过
-- 否则 prettier/biome/rustfmt/ruff
-- 无配置 → 跳过
-
+**检**: 改导出→消费者 | 改schema→查询代码 | 改type→依赖图更新 | refactor→删死代码
+**格**: husky→跳过 | 否则 prettier/biome/rustfmt/ruff | 无配置→跳过
 **存**: `type(scope): 描述`
 
-### 文档同步（feat 意图）
+### 文档同步（feat）
 
 改了用户可见行为 → 更新 README/API docs → `docs: 描述`
+项目有 CHANGELOG.md → 追加本次变更 → 同一 commit
 
 ### 测试（写但不跑）
 
-| 意图 | 要求 |
-|------|------|
-| fix | 回归测试 |
-| feat | 核心逻辑单测 |
-| refactor | 先锁行为再改 |
-| perf/chore | 不写 |
-
-无测试框架→不写。有→跟随已有模式。
+fix→回归 | feat→单测 | refactor→先锁行为 | perf/chore→不写
+无框架→不写 | 有→跟随模式
 
 ### 完成标准
 
+**必检**（每个功能都检）：
 - [ ] 功能完整
 - [ ] 无硬编码密钥
-- [ ] 导出/类型变更已同步
+- [ ] 导出/类型变更已同步消费者
 - [ ] 新文件在正确目录
-- [ ] DB迁移只加法
-- [ ] 新路由有认证
-- [ ] 新状态跟随方案
-- [ ] 新API遵循响应格式
-- [ ] i18n 无硬编码
-- [ ] 前端有三态（feat+新页面）
-- [ ] 前端基础 a11y
-- [ ] 测试已写
-- [ ] 文档已同步（feat）
-- [ ] 无死代码（refactor）
+- [ ] 语言惯用写法
+
+**条件检**（仅相关时检）：
+- [ ] DB迁移只加法 ← 有schema变更时
+- [ ] 新路由有认证 ← 有新路由时
+- [ ] 新API遵循响应格式 ← 有新API时
+- [ ] i18n 无硬编码 ← 项目有i18n时
+- [ ] 前端三态 ← feat+新页面时
+- [ ] 响应式适配 ← feat+前端时
+- [ ] 暗色模式 ← 项目有dark mode时
+- [ ] a11y基础 ← 有新UI时
+- [ ] 测试 ← 按意图策略
+- [ ] 文档/CHANGELOG ← feat时
+- [ ] 无死代码 ← refactor时
 
 ### 一致性保障
 
@@ -246,45 +233,45 @@ Agent(subagent_type="feature-dev:code-explorer")：
 ## 阶段4: 验证（所有模式）
 
 秒级静态检查（检测到才跑，超时10s跳过）：
-
-| 栈 | 命令 |
-|----|------|
-| TS | `npx tsc --noEmit 2>&1 \| tail -30` |
-| ESLint | `npx eslint {changed_files} --quiet 2>&1 \| tail -20` |
-| Python | `python -m py_compile {file}` |
-| Rust | `cargo check 2>&1 \| tail -30` |
-| Go | `go vet ./... 2>&1 \| tail -20` |
-
-有错→修→`fix: 静态检查修复`。>20个错误→只修 error 级别。
+TS→`tsc --noEmit` | ESLint→`eslint {files} --quiet` | Python→`py_compile` | Rust→`cargo check` | Go→`go vet`
+有错→修→`fix: 静态检查修复`。>20错→只修error。
 
 ## 阶段5: 审查（标准/大型）
 
 Agent(subagent_type="feature-dev:code-reviewer")：
-- `git diff {起始hash}..HEAD`
-- 安全 + 铁律 + CLAUDE.md + 逻辑 + 性能 + 认证 + 类型 + a11y
-- 有问题→修→`fix: 描述`
+`git diff {起始hash}..HEAD` → 安全+铁律+CLAUDE.md+逻辑+性能+认证+类型+a11y
+有问题→修→`fix: 描述`
 
 ## 阶段6: 推送
 
-1. DB项目 → seed 覆盖新功能 → `chore(data): 描述`
-2. `git push origin {branch}`（失败→rebase→二次失败报错）
-3. 大型模式 → 技术决策存项目记忆 + 更新 .auto-dev-progress.json
-4. 有 stash → 提醒 pop
+1. DB项目 → seed → `chore(data): 描述`
+2. `git push origin {branch}`（失败→rebase→二次报错）
+3. 大型 → 存记忆 + 更新 progress.json
 
-## 阶段7: CI 反馈（标准/大型，新增）
+## 阶段7: 收尾
 
-push 后检查 CI 状态：
+### CI 反馈（标准/大型）
 ```bash
 sleep 5 && gh run list --limit 1 --json status,conclusion 2>/dev/null
 ```
+通过/无CI→完成 | 失败→查日志→修→push（最多2轮）| pending→汇报注明
 
-| CI 状态 | 处理 |
-|---------|------|
-| 通过 / 无 CI | 完成 |
-| 失败 | `gh run view --log-failed` 查看原因 → 修复 → push → 再检查（最多2轮） |
-| pending | 汇报中注明"CI运行中" |
+### PR 创建（大型模式，feature分支时）
+```bash
+gh pr create --title "feat: 需求概要" --body "$(cat <<'EOF'
+## 变更内容
+- 功能1
+- 功能2
 
-## 汇报
+## Auto-Dev v9 自动生成
+EOF
+)" --draft
+```
+> 创建 draft PR，用户 review 后自行合并
+
+### 有 stash → 提醒 pop
+
+### 汇报
 
 **快速**:
 ```
@@ -296,21 +283,63 @@ Auto-Dev | 项目名 | fix
 **标准/大型**:
 ```
 ══════════════════════════════
-Auto-Dev v8 | 项目名 | feat/标准
+Auto-Dev v9 | 项目名 | feat/标准
 ──────────────────────────────
 ✅ 规划 — N任务 N文件
 ✅ 理解 — N模块
 ✅ 开发 — N功能 N commits
 ✅ 验证 — tsc ✅ eslint ✅
-✅ 审查 — N问题已修 / 无问题
+✅ 审查 — N问题已修
 ✅ 推送 — branch → origin
-✅ CI — passed / pending / fixed(N轮)
+✅ CI — passed
+✅ PR — #123 (draft)
 ──────────────────────────────
 成果: A / B / C
 回滚: X(原因)
 遗留: Y(原因)
 建议: Z
 ══════════════════════════════
+```
+
+---
+
+## 示例：一次标准模式 feat 的完整流程
+
+> 输入: `/auto-dev 添加文章收藏功能`
+
+```
+Phase 0: 检测到 Next.js + Prisma + Zustand + next-auth + Tailwind(dark mode)
+         意图=feat | 模式=标准 | 预计8文件
+         幂等检查: Grep "favorite/collect/收藏" → 未实现
+
+阶段1-规划: code-architect → 6个任务
+  1. prisma/schema: 新增 Favorite 表
+  2. src/server/api: 收藏/取消收藏 API
+  3. src/stores: 收藏状态 store
+  4. src/components: FavoriteButton 组件
+  5. src/app/favorites: 我的收藏页
+  6. 测试 + 文档
+
+阶段2-理解: code-explorer → 分析 Article 模型、现有 API 模式、auth 中间件
+
+阶段3-开发:
+  任务1: schema添加Favorite表 → commit: feat(db): 添加收藏表
+  任务2: API(带auth middleware) → 遵循 {code,data,message} 格式
+         commit: feat(api): 收藏/取消收藏接口
+  任务3: zustand store → 用 create() 跟随项目模式
+         commit: feat(store): 收藏状态管理
+  任务4: FavoriteButton → 带 Loading态 + dark: 前缀 + aria-label
+         commit: feat(ui): 收藏按钮组件
+  任务5: 收藏页 → 三态(Loading/Error/Empty) + 响应式 + 分页
+         commit: feat(page): 我的收藏页面
+  任务6: 测试 + README更新 + CHANGELOG
+         commit: test(favorite): 收藏逻辑测试
+         commit: docs: 更新文档
+
+阶段4-验证: tsc --noEmit ✅ | eslint ✅
+阶段5-审查: code-reviewer → 0问题
+阶段6-推送: git push origin main
+阶段7-CI: gh run → passed ✅
 ```
 
 ---

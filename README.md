@@ -1,4 +1,4 @@
-# Auto-Dev v8
+# Auto-Dev v9
 
 Claude Code 全自动开发流水线技能 -- 输入需求，自动完成开发并推送到 GitHub。
 
@@ -44,6 +44,15 @@ Auto-Dev 是一个 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 | 基础 a11y | 自动加 aria-label、alt、label、对比度 |
 | API 格式一致 | 检测已有响应格式，新 API 严格遵循 |
 | 跨会话持久 | 大型模式进度存档 .auto-dev-progress.json |
+| 自动创建 PR | 大型模式 feature 分支自动创建 draft PR |
+| 响应式适配 | 检测 Tailwind/CSS，新组件自动适配移动端 |
+| 暗色模式 | 检测到 dark mode 支持时，新组件自动适配 |
+| CHANGELOG | 项目有 CHANGELOG.md 时自动追加变更记录 |
+| 范围协商 | 需求过大且模糊时先拆解范围再动手 |
+| 中止机制 | 发现不可行时立即中止，汇报原因+替代方案 |
+| 完整示例 | 内置 golden path 示例，Claude 按示例对齐行为 |
+| 快速启动 | 快速模式精简 Phase 0，<3秒进入开发 |
+| 分层检查 | 完成标准分必检(5项)+条件检(11项)，不一刀切 |
 
 ## 安装
 
@@ -90,14 +99,14 @@ mkdir -p .claude/commands && curl -o .claude/commands/auto-dev.md \
 | 脚手架 | 新项目 | 初始化 -> 开发 -> 验证 -> 推送 |
 | 快速 | < 5 文件 / bug 修复 | 开发 -> 验证 -> 推送 |
 | 标准 | 新功能 / 重构 | 规划 -> 理解 -> 开发 -> 验证 -> 审查 -> 推送 -> CI |
-| 大型 | 跨模块 / 大型重构 | 同标准 + feature 分支 + 渐进交付 + 进度存档 |
+| 大型 | 跨模块 / 大型重构 | 同标准 + feature 分支 + 切片交付 + draft PR |
 
 ### 意图自动识别
 
 | 你说 | 识别为 | 行为 |
 |------|--------|------|
 | "修复XXX报错" | fix | 最小改动 + 回归测试 |
-| "添加XXX功能" | feat | 完整实现 + 单测 + 文档同步 |
+| "添加XXX功能" | feat | 完整实现 + 单测 + 文档 + 三态 + 响应式 |
 | "重构XXX模块" | refactor | 先锁行为再改 + 清理死代码 |
 | "XXX太慢了" | perf | 定位瓶颈，针对性优化 |
 | "升级XXX版本" | chore | 最小风险，逐步执行 |
@@ -163,6 +172,7 @@ mkdir -p .claude/commands && curl -o .claude/commands/auto-dev.md \
 | v6 | 决策框架 + 全栈分层 + 脚手架 + 依赖卫生 + i18n/hooks感知 + 一致性保障 |
 | v7 | 轻量验证 + 审计模式 + 渐进交付 + 会话内学习 + 认证/状态感知 + 语言特定检查 + 类型传播 |
 | v8 | CI反馈闭环 + 降级机制 + 前端三态/a11y + API格式一致 + 跨会话持久 + prompt瘦身(-10%) |
+| v9 | Golden path示例 + 自动PR + 响应式/暗色模式 + CHANGELOG + 范围协商 + 中止机制 + 分层检查 + 快速启动 |
 
 ## License
 
